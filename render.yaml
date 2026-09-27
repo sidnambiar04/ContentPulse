@@ -33,5 +33,5 @@ services:
 databases:
   - name: contentpulse-db
     databaseName: contentpulse
-    user: postgres
+    user: contentpulse_user
     plan: free
