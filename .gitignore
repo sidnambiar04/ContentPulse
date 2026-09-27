@@ -8,8 +8,17 @@ backend/venv/
 backend/.venv/
 venv/
 .venv/
-env/
+# Environment & Secrets
 .env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.env
 *.db
 *.sqlite3
 
