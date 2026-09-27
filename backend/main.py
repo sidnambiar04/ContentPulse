@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from datetime import datetime
 
-from database import get_db
+from database import get_db, engine, Base
 from models import (
     Competitor,
     MonitoringSource,
@@ -44,17 +44,18 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 # ============================================================
-# START SCHEDULER
+# START SCHEDULER & DATABASE TABLES
 # ============================================================
 
 @app.on_event("startup")
 def startup_event():
+    Base.metadata.create_all(bind=engine)
     start_scheduler()
 
 

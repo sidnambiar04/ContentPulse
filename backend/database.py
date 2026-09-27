@@ -17,6 +17,10 @@ DATABASE_URL = os.getenv(
     "postgresql://postgres:postgres@localhost:5432/contentpulse"
 )
 
+# Render / cloud providers use postgres:// which SQLAlchemy deprecated in favor of postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
