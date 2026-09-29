@@ -36,6 +36,7 @@ import {
   createCompetitor,
   deleteCompetitor,
   checkCompetitorNow,
+  checkAllNow,
 } from "./api";
 
 import "./App.css";
@@ -85,6 +86,7 @@ function App() {
 
   // Manual Check Loading
   const [checkingCompetitorId, setCheckingCompetitorId] = useState(null);
+  const [checkingAll, setCheckingAll] = useState(false);
 
   // ==========================================================
   // ARTICLE PAGE FILTERS & SORT
@@ -187,9 +189,11 @@ function App() {
 
       setNewCompetitor({ name: "", website_url: "", blog_url: "", check_interval_minutes: 1 });
       setShowAddCompetitor(false);
-      showToast("Competitor added and monitoring sources discovered!");
+      showToast("Competitor added! Running first scan in the background…");
       await loadDashboard();
       setActivePage("competitors");
+      // Auto-refresh after 8s so the background initial check results appear
+      setTimeout(() => loadDashboard(), 8000);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || "Failed to add competitor.");
@@ -264,6 +268,25 @@ function App() {
       );
     } finally {
       setCheckingCompetitorId(null);
+    }
+  };
+
+  const handleCheckAllNow = async () => {
+    try {
+      setCheckingAll(true);
+      setError(null);
+      showToast("Scanning all competitors… this may take a few seconds.", "info");
+      const res = await checkAllNow();
+      showToast(
+        `Scan complete! ${res.total} competitors checked — ${res.total_new_articles ?? 0} new article(s) found.`,
+        "success"
+      );
+      await loadDashboard();
+    } catch (err) {
+      console.error(err);
+      showToast("Check All failed. Please try again.", "error");
+    } finally {
+      setCheckingAll(false);
     }
   };
 
@@ -519,7 +542,9 @@ function App() {
             onOpenDelete={(comp) => setDeletingCompetitor(comp)}
             onOpenDetail={(comp) => handleOpenCompetitorDetail(comp)}
             onCheckNow={(id, name) => handleCheckNow(id, name)}
+            onCheckAll={handleCheckAllNow}
             checkingId={checkingCompetitorId}
+            checkingAll={checkingAll}
             refreshing={refreshing}
             handleRefresh={handleRefresh}
           />
@@ -1534,7 +1559,9 @@ function CompetitorsView({
   onOpenDelete,
   onOpenDetail,
   onCheckNow,
+  onCheckAll,
   checkingId,
+  checkingAll,
   refreshing,
   handleRefresh,
 }) {
@@ -1549,6 +1576,16 @@ function CompetitorsView({
           <button className="refresh-button" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw size={15} className={refreshing ? "spinning" : ""} />
             {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+          <button
+            className="refresh-button"
+            onClick={onCheckAll}
+            disabled={checkingAll}
+            style={{ color: checkingAll ? "#64748b" : "#0ea5e9" }}
+            title="Immediately scan all enabled competitors for new articles"
+          >
+            <Zap size={15} className={checkingAll ? "spinning" : ""} />
+            {checkingAll ? "Scanning All…" : "Scan All Now"}
           </button>
           <button className="primary-button" onClick={onOpenAdd}>
             + Add Competitor

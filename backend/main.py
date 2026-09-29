@@ -1,4 +1,5 @@
 import json
+import threading
 from typing import Optional
 from fastapi import FastAPI, Depends, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -190,6 +191,14 @@ def create_competitor(
 
     # Immediately schedule monitoring with chosen interval
     schedule_competitor(new_competitor.id, interval)
+
+    # Run a first check immediately in the background so articles appear right away
+    def _initial_check(cid: int):
+        from scheduler import check_single_competitor
+        check_single_competitor(cid)
+
+    t = threading.Thread(target=_initial_check, args=(new_competitor.id,), daemon=True)
+    t.start()
 
     return new_competitor
 
@@ -387,6 +396,59 @@ def check_competitor_endpoint(
         "competitor": competitor.name,
         **result
     }
+
+
+# ============================================================
+# CHECK ALL COMPETITORS NOW
+# ============================================================
+
+@app.post("/competitors/check-all")
+def check_all_competitors_now(
+    db: Session = Depends(get_db)
+):
+    """Immediately trigger a manual scan for all enabled competitors."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from scheduler import check_single_competitor
+
+    competitors = (
+        db.query(Competitor)
+        .filter(Competitor.monitoring_enabled == True)
+        .all()
+    )
+
+    if not competitors:
+        return {
+            "success": True,
+            "message": "No enabled competitors to check",
+            "total": 0,
+            "results": []
+        }
+
+    competitor_ids = [c.id for c in competitors]
+    total = len(competitor_ids)
+
+    results = []
+    with ThreadPoolExecutor(max_workers=min(10, total)) as executor:
+        futures = {
+            executor.submit(check_single_competitor, cid): cid
+            for cid in competitor_ids
+        }
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                results.append(res)
+            except Exception as e:
+                results.append({"competitor_id": futures[future], "success": False, "error": str(e)})
+
+    total_new = sum(r.get("new_articles", 0) for r in results)
+    return {
+        "success": True,
+        "message": f"Checked {total} competitors",
+        "total": total,
+        "total_new_articles": total_new,
+        "results": results
+    }
+
 
 
 # ============================================================

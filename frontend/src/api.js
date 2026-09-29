@@ -52,6 +52,11 @@ export const checkCompetitorNow = async (competitorId) => {
     return response.data;
 };
 
+export const checkAllNow = async () => {
+    const response = await API.post("/competitors/check-all");
+    return response.data;
+};
+
 export const getArticles = async (params = {}) => {
     const response = await API.get("/articles", { params });
     return response.data;
