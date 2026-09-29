@@ -275,18 +275,21 @@ function App() {
     try {
       setCheckingAll(true);
       setError(null);
-      showToast("Scanning all competitors… this may take a few seconds.", "info");
       const res = await checkAllNow();
       showToast(
-        `Scan complete! ${res.total} competitors checked — ${res.total_new_articles ?? 0} new article(s) found.`,
-        "success"
+        `⚡ Scan started for ${res.total} competitors — refreshing in 15 seconds…`,
+        "info"
       );
-      await loadDashboard();
+      // Auto-refresh after 15s to pick up results from the background scan
+      setTimeout(async () => {
+        await loadDashboard();
+        setCheckingAll(false);
+        showToast("Dashboard refreshed with latest scan results.", "success");
+      }, 15000);
     } catch (err) {
       console.error(err);
-      showToast("Check All failed. Please try again.", "error");
-    } finally {
       setCheckingAll(false);
+      showToast("Scan All failed — backend may be starting up. Try again in 30s.", "error");
     }
   };
 

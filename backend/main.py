@@ -406,8 +406,7 @@ def check_competitor_endpoint(
 def check_all_competitors_now(
     db: Session = Depends(get_db)
 ):
-    """Immediately trigger a manual scan for all enabled competitors."""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    """Fire a background scan for all enabled competitors and return immediately."""
     from scheduler import check_single_competitor
 
     competitors = (
@@ -421,32 +420,31 @@ def check_all_competitors_now(
             "success": True,
             "message": "No enabled competitors to check",
             "total": 0,
-            "results": []
         }
 
     competitor_ids = [c.id for c in competitors]
     total = len(competitor_ids)
 
-    results = []
-    with ThreadPoolExecutor(max_workers=min(10, total)) as executor:
-        futures = {
-            executor.submit(check_single_competitor, cid): cid
-            for cid in competitor_ids
-        }
-        for future in as_completed(futures):
-            try:
-                res = future.result()
-                results.append(res)
-            except Exception as e:
-                results.append({"competitor_id": futures[future], "success": False, "error": str(e)})
+    # Run all checks in a background thread so the HTTP request returns immediately
+    # (avoids Render 30s request timeout when checking many competitors)
+    def _run_all():
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=min(10, total)) as executor:
+            futures = [executor.submit(check_single_competitor, cid) for cid in competitor_ids]
+            for f in as_completed(futures):
+                try:
+                    f.result()
+                except Exception:
+                    pass
 
-    total_new = sum(r.get("new_articles", 0) for r in results)
+    t = threading.Thread(target=_run_all, daemon=True)
+    t.start()
+
     return {
         "success": True,
-        "message": f"Checked {total} competitors",
+        "message": f"Scan started for {total} competitors — refresh in ~15 seconds to see results.",
         "total": total,
-        "total_new_articles": total_new,
-        "results": results
+        "total_new_articles": 0,
     }
 
 
