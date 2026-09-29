@@ -2241,11 +2241,19 @@ function StatusBadge({ status }) {
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   try {
-    const d = new Date(dateStr);
+    // Backend stores naive UTC datetimes without timezone suffix.
+    // Append 'Z' so JavaScript correctly treats it as UTC before converting to IST.
+    const utcStr = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+    const d = new Date(utcStr);
     if (isNaN(d.getTime())) return "—";
     return d.toLocaleString("en-IN", {
-      dateStyle: "short",
-      timeStyle: "short",
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   } catch {
     return "—";
