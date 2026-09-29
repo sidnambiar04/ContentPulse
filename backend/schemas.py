@@ -7,6 +7,7 @@ class CompetitorCreate(BaseModel):
     name: str
     website_url: HttpUrl
     blog_url: Optional[HttpUrl] = None
+    check_interval_minutes: Optional[int] = 1
 
 
 class CompetitorUpdate(BaseModel):
@@ -16,6 +17,7 @@ class CompetitorUpdate(BaseModel):
     rss_url: Optional[str] = None
     sitemap_url: Optional[str] = None
     monitoring_enabled: Optional[bool] = None
+    check_interval_minutes: Optional[int] = None
 
 
 class MonitoringSourceResponse(BaseModel):
@@ -42,6 +44,7 @@ class CompetitorResponse(BaseModel):
 
     monitoring_enabled: bool
     status: str
+    check_interval_minutes: Optional[int] = 1
 
     last_checked: Optional[datetime] = None
     last_successful_detection: Optional[datetime] = None

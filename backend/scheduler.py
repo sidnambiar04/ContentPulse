@@ -283,26 +283,79 @@ def monitor_all_competitors():
 
 scheduler = BackgroundScheduler()
 
+
+def _job_id(competitor_id: int) -> str:
+    return f"monitor_competitor_{competitor_id}"
+
+
+def schedule_competitor(competitor_id: int, interval_minutes: int):
+    """Add or replace the per-competitor monitoring job."""
+    job_id = _job_id(competitor_id)
+    scheduler.add_job(
+        check_single_competitor,
+        "interval",
+        minutes=max(1, interval_minutes),
+        args=[competitor_id],
+        id=job_id,
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=30
+    )
+    print(
+        f"Scheduled competitor {competitor_id} "
+        f"every {interval_minutes} min (job: {job_id})"
+    )
+
+
+def unschedule_competitor(competitor_id: int):
+    """Remove the per-competitor monitoring job if it exists."""
+    job_id = _job_id(competitor_id)
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
+        print(f"Removed job for competitor {competitor_id}")
+
+
+def sync_competitor_schedules():
+    """
+    Called at startup and periodically to ensure every enabled
+    competitor has a scheduled job with the correct interval, and
+    that disabled / deleted competitors have their jobs removed.
+    """
+    db = SessionLocal()
+    try:
+        competitors = db.query(Competitor).all()
+        active_ids = set()
+
+        for comp in competitors:
+            if comp.monitoring_enabled:
+                interval = comp.check_interval_minutes or 1
+                schedule_competitor(comp.id, interval)
+                active_ids.add(comp.id)
+            else:
+                unschedule_competitor(comp.id)
+
+        # Clean up jobs for competitors that no longer exist in DB
+        for job in scheduler.get_jobs():
+            if job.id.startswith("monitor_competitor_"):
+                cid = int(job.id.split("_")[-1])
+                if cid not in active_ids:
+                    scheduler.remove_job(job.id)
+                    print(f"Cleaned up stale job for competitor {cid}")
+
+    finally:
+        db.close()
+
+
+# Re-sync schedules every 2 minutes to pick up interval changes
 scheduler.add_job(
-    monitor_all_competitors,
-
+    sync_competitor_schedules,
     "interval",
-
-    minutes=1,
-
-    id="competitor_monitor",
-
+    minutes=2,
+    id="sync_schedules",
     replace_existing=True,
-
-    # Never allow two complete monitoring cycles
-    # to execute simultaneously.
     max_instances=1,
-
-    # If a scheduled run is missed, only execute
-    # the latest missed run.
     coalesce=True,
-
-    # Allow a 30-second grace period.
     misfire_grace_time=30
 )
 
@@ -320,3 +373,6 @@ def start_scheduler():
         print(
             "ContentPulse scheduler started."
         )
+
+    # Initial schedule sync after startup
+    sync_competitor_schedules()

@@ -28,6 +28,7 @@ class Competitor(Base):
     last_checked = Column(DateTime)
     last_successful_detection = Column(DateTime)
 
+    check_interval_minutes = Column(Integer, default=1)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 

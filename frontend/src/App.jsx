@@ -63,6 +63,7 @@ function App() {
     name: "",
     website_url: "",
     blog_url: "",
+    check_interval_minutes: 1,
   });
   const [addingCompetitor, setAddingCompetitor] = useState(false);
 
@@ -181,9 +182,10 @@ function App() {
         name: newCompetitor.name.trim(),
         website_url: newCompetitor.website_url.trim(),
         blog_url: newCompetitor.blog_url.trim() || null,
+        check_interval_minutes: Number(newCompetitor.check_interval_minutes) || 1,
       });
 
-      setNewCompetitor({ name: "", website_url: "", blog_url: "" });
+      setNewCompetitor({ name: "", website_url: "", blog_url: "", check_interval_minutes: 1 });
       setShowAddCompetitor(false);
       showToast("Competitor added and monitoring sources discovered!");
       await loadDashboard();
@@ -210,6 +212,7 @@ function App() {
         rss_url: editingCompetitor.rss_url || null,
         sitemap_url: editingCompetitor.sitemap_url || null,
         monitoring_enabled: editingCompetitor.monitoring_enabled,
+        check_interval_minutes: editingCompetitor.check_interval_minutes || 1,
       });
 
       setEditingCompetitor(null);
@@ -630,6 +633,23 @@ function App() {
                   />
                 </label>
 
+                <label>
+                  Check Interval
+                  <div className="interval-picker">
+                    {[1, 2, 5, 10].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`interval-btn${newCompetitor.check_interval_minutes === m ? " active" : ""}`}
+                        onClick={() => setNewCompetitor({ ...newCompetitor, check_interval_minutes: m })}
+                        disabled={addingCompetitor}
+                      >
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
+                </label>
+
                 <div className="analysis-info">
                   <Globe size={18} style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>
@@ -763,6 +783,23 @@ function App() {
                     }
                     disabled={savingEdit}
                   />
+                </label>
+
+                <label>
+                  Check Interval
+                  <div className="interval-picker">
+                    {[1, 2, 5, 10].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`interval-btn${(editingCompetitor.check_interval_minutes || 1) === m ? " active" : ""}`}
+                        onClick={() => setEditingCompetitor({ ...editingCompetitor, check_interval_minutes: m })}
+                        disabled={savingEdit}
+                      >
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
                 </label>
               </div>
 

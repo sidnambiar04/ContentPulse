@@ -1199,6 +1199,46 @@ tr:hover td {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+/* Interval picker */
+.interval-picker {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.interval-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.interval-btn:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.interval-btn.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+
+.interval-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

@@ -21,7 +21,7 @@ from schemas import (
 
 from analyzer import analyze_website
 from monitor import check_competitor as monitor_competitor
-from scheduler import start_scheduler
+from scheduler import start_scheduler, schedule_competitor, unschedule_competitor
 
 
 # ============================================================
@@ -56,7 +56,22 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
+
+    # Migrate: add check_interval_minutes column if missing (for existing prod DBs)
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE competitors ADD COLUMN IF NOT EXISTS "
+                    "check_interval_minutes INTEGER DEFAULT 1"
+                )
+            )
+            conn.commit()
+    except Exception:
+        pass  # Column already exists or DB doesn't support IF NOT EXISTS
+
     start_scheduler()
+
 
 
 # ============================================================
@@ -102,6 +117,8 @@ def create_competitor(
     # 2. Create competitor record
     # --------------------------------------------------------
 
+    interval = competitor.check_interval_minutes or 1
+
     new_competitor = Competitor(
         name=competitor.name,
         website_url=str(competitor.website_url),
@@ -111,6 +128,7 @@ def create_competitor(
         sitemap_url=analysis.get("sitemap_url"),
 
         monitoring_enabled=True,
+        check_interval_minutes=interval,
 
         status=(
             "online"
@@ -169,6 +187,9 @@ def create_competitor(
         db.add(blog_source)
 
     db.commit()
+
+    # Immediately schedule monitoring with chosen interval
+    schedule_competitor(new_competitor.id, interval)
 
     return new_competitor
 
@@ -407,6 +428,8 @@ def update_competitor(
             competitor.sitemap_url = str(data.sitemap_url).strip() if data.sitemap_url else None
         if data.monitoring_enabled is not None:
             competitor.monitoring_enabled = data.monitoring_enabled
+        if data.check_interval_minutes is not None:
+            competitor.check_interval_minutes = data.check_interval_minutes
 
     if monitoring_enabled is not None:
         competitor.monitoring_enabled = monitoring_enabled
@@ -415,6 +438,12 @@ def update_competitor(
 
     db.commit()
     db.refresh(competitor)
+
+    # Apply interval change immediately
+    if competitor.monitoring_enabled:
+        schedule_competitor(competitor.id, competitor.check_interval_minutes or 1)
+    else:
+        unschedule_competitor(competitor.id)
 
     return {
         "success": True,
@@ -425,6 +454,7 @@ def update_competitor(
         "rss_url": competitor.rss_url,
         "sitemap_url": competitor.sitemap_url,
         "monitoring_enabled": competitor.monitoring_enabled,
+        "check_interval_minutes": competitor.check_interval_minutes,
         "status": competitor.status
     }
 
@@ -455,7 +485,9 @@ def delete_competitor(
 
     try:
         # Clean up associated records safely in foreign-key dependency order:
-        # 1. Delete MonitoringLog first (references both competitor_id and monitoring_sources.id)
+        # 1. Remove scheduler job for this competitor
+        unschedule_competitor(competitor_id)
+        # 2. Delete MonitoringLog first (references both competitor_id and monitoring_sources.id)
         db.query(MonitoringLog).filter(MonitoringLog.competitor_id == competitor_id).delete(synchronize_session=False)
         # 2. Delete Article (references competitor_id)
         db.query(Article).filter(Article.competitor_id == competitor_id).delete(synchronize_session=False)
