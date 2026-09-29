@@ -234,7 +234,9 @@ function App() {
       await loadDashboard();
     } catch (err) {
       console.error(err);
-      setError("Failed to delete competitor.");
+      const msg = err?.response?.data?.detail || err?.response?.data?.error || "Failed to delete competitor.";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setIsDeleting(false);
     }

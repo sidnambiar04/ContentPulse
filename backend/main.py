@@ -448,23 +448,34 @@ def delete_competitor(
     )
 
     if not competitor:
+        raise HTTPException(
+            status_code=404,
+            detail="Competitor not found"
+        )
+
+    try:
+        # Clean up associated records safely in foreign-key dependency order:
+        # 1. Delete MonitoringLog first (references both competitor_id and monitoring_sources.id)
+        db.query(MonitoringLog).filter(MonitoringLog.competitor_id == competitor_id).delete(synchronize_session=False)
+        # 2. Delete Article (references competitor_id)
+        db.query(Article).filter(Article.competitor_id == competitor_id).delete(synchronize_session=False)
+        # 3. Delete MonitoringSource (references competitor_id)
+        db.query(MonitoringSource).filter(MonitoringSource.competitor_id == competitor_id).delete(synchronize_session=False)
+        # 4. Delete Competitor record
+        db.delete(competitor)
+        db.commit()
+
         return {
-            "success": False,
-            "error": "Competitor not found"
+            "success": True,
+            "message": "Competitor and all associated data deleted successfully"
         }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete competitor: {str(e)}"
+        )
 
-    # Clean up associated records safely
-    db.query(Article).filter(Article.competitor_id == competitor_id).delete(synchronize_session=False)
-    db.query(MonitoringSource).filter(MonitoringSource.competitor_id == competitor_id).delete(synchronize_session=False)
-    db.query(MonitoringLog).filter(MonitoringLog.competitor_id == competitor_id).delete(synchronize_session=False)
-
-    db.delete(competitor)
-    db.commit()
-
-    return {
-        "success": True,
-        "message": "Competitor deleted successfully"
-    }
 
 
 # ============================================================
