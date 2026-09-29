@@ -2,6 +2,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import threading
+
 from datetime import datetime
 
 from database import SessionLocal
@@ -328,23 +330,33 @@ def sync_competitor_schedules():
         active_ids = set()
 
         for comp in competitors:
-            if comp.monitoring_enabled:
-                interval = comp.check_interval_minutes or 1
-                schedule_competitor(comp.id, interval)
-                active_ids.add(comp.id)
-            else:
-                unschedule_competitor(comp.id)
+            try:
+                if comp.monitoring_enabled:
+                    interval = getattr(comp, "check_interval_minutes", None) or 1
+                    schedule_competitor(comp.id, interval)
+                    active_ids.add(comp.id)
+                else:
+                    unschedule_competitor(comp.id)
+            except Exception as ce:
+                print(f"[sync] error scheduling competitor {comp.id}: {ce}")
 
         # Clean up jobs for competitors that no longer exist in DB
         for job in scheduler.get_jobs():
             if job.id.startswith("monitor_competitor_"):
-                cid = int(job.id.split("_")[-1])
-                if cid not in active_ids:
-                    scheduler.remove_job(job.id)
-                    print(f"Cleaned up stale job for competitor {cid}")
+                try:
+                    cid = int(job.id.split("_")[-1])
+                    if cid not in active_ids:
+                        scheduler.remove_job(job.id)
+                        print(f"Cleaned up stale job for competitor {cid}")
+                except Exception:
+                    pass
 
+    except Exception as e:
+        print(f"[sync] sync_competitor_schedules error: {e}")
+        db.rollback()
     finally:
         db.close()
+
 
 
 # Re-sync schedules every 2 minutes to pick up interval changes
@@ -374,5 +386,15 @@ def start_scheduler():
             "ContentPulse scheduler started."
         )
 
-    # Initial schedule sync after startup
-    sync_competitor_schedules()
+    # Defer initial sync to a background thread so startup_event
+    # can complete even if the DB isn't ready yet or the column is missing.
+    def _deferred_sync():
+        import time
+        time.sleep(3)  # give the DB connection pool a moment to settle
+        try:
+            sync_competitor_schedules()
+        except Exception as e:
+            print(f"[scheduler] initial sync failed (will retry in 2 min): {e}")
+
+    threading.Thread(target=_deferred_sync, daemon=True).start()
+

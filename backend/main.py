@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import FastAPI, Depends, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from datetime import datetime
 
 from database import get_db, engine, Base
@@ -56,22 +56,32 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    Base.metadata.create_all(bind=engine)
+    # Create any missing tables
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[startup] create_all warning: {e}")
 
-    # Migrate: add check_interval_minutes column if missing (for existing prod DBs)
+    # Migrate: add check_interval_minutes column for existing prod DBs
     try:
         with engine.connect() as conn:
             conn.execute(
-                __import__("sqlalchemy").text(
+                text(
                     "ALTER TABLE competitors ADD COLUMN IF NOT EXISTS "
                     "check_interval_minutes INTEGER DEFAULT 1"
                 )
             )
             conn.commit()
-    except Exception:
-        pass  # Column already exists or DB doesn't support IF NOT EXISTS
+        print("[startup] check_interval_minutes column ensured.")
+    except Exception as e:
+        print(f"[startup] migration skipped: {e}")
 
-    start_scheduler()
+    # Start scheduler — defer initial sync to a background thread so startup
+    # never blocks or crashes the server even if the DB has issues.
+    try:
+        start_scheduler()
+    except Exception as e:
+        print(f"[startup] scheduler start warning: {e}")
 
 
 
