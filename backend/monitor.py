@@ -23,14 +23,41 @@ from models import (
 from article_parser import parse_article
 
 HEADERS = {
-    "User-Agent": "ContentPulse/1.0",
-    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html"
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
 }
+
+RSS_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (compatible; ContentPulse/2.0; +https://contentpulse.app)"
+    ),
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+}
+
+# Common fallback RSS/feed paths tried when RSS URL is missing
+COMMON_RSS_PATHS = [
+    "/feed",
+    "/feed.xml",
+    "/rss",
+    "/rss.xml",
+    "/atom.xml",
+    "/blog/feed",
+    "/blog/rss.xml",
+    "/news/feed",
+    "/feeds/posts/default",
+]
 
 # =========================================================
 # RETRY CONFIGURATION
 # =========================================================
-REQUEST_TIMEOUT = 15
+REQUEST_TIMEOUT = 20
 
 # =========================================================
 # RSS DATE PARSER
@@ -450,14 +477,36 @@ def check_rss(
     db: Session,
     check_id=None
 ):
-    if not competitor.rss_url:
+
+    rss_url = competitor.rss_url
+
+    # ----------------------------------------------------------
+    # AUTO-DISCOVER RSS if not stored
+    # ----------------------------------------------------------
+    if not rss_url:
+        base = competitor.website_url.rstrip("/")
+        for path in COMMON_RSS_PATHS:
+            candidate = base + path
+            try:
+                r = requests.get(candidate, headers=RSS_HEADERS, timeout=8, allow_redirects=True)
+                if r.ok and ("xml" in r.headers.get("content-type", "") or "<rss" in r.text[:500] or "<feed" in r.text[:500]):
+                    rss_url = candidate
+                    # Persist discovery
+                    competitor.rss_url = rss_url
+                    db.commit()
+                    print(f"Auto-discovered RSS: {rss_url}")
+                    break
+            except Exception:
+                continue
+
+    if not rss_url:
         return {
             "success": False,
             "new_articles": 0,
-            "error": "No RSS feed configured"
+            "error": "No RSS feed found"
         }
 
-    print(f"Checking RSS: {competitor.rss_url}")
+    print(f"Checking RSS: {rss_url}")
 
     start_time = time.perf_counter()
 
@@ -466,15 +515,16 @@ def check_rss(
         .filter(
             MonitoringSource.competitor_id == competitor.id,
             MonitoringSource.source_type == "rss",
-            MonitoringSource.source_url == competitor.rss_url
+            MonitoringSource.source_url == rss_url
         )
         .first()
     )
 
     try:
         response = request_with_retry(
-    competitor.rss_url,
-            timeout=REQUEST_TIMEOUT
+            rss_url,
+            timeout=REQUEST_TIMEOUT,
+            headers=RSS_HEADERS
         )
 
         feed = feedparser.parse(
@@ -507,7 +557,8 @@ def check_rss(
         new_articles = 0
         seen_urls = set()
 
-        for entry in feed.entries:
+        # Process up to 50 most recent entries
+        for entry in feed.entries[:50]:
             title = entry.get("title", "Untitled")
             url = entry.get("link")
 
@@ -525,6 +576,10 @@ def check_rss(
 
             published_at = parse_publication_date(entry)
 
+            # For RSS we already have title + date from the feed.
+            # Store immediately without fetching the full article page
+            # to avoid slowdowns — parse_article will be attempted
+            # but we save even if it fails.
             created = create_article_record(
                 competitor=competitor,
                 db=db,
@@ -544,6 +599,22 @@ def check_rss(
             source.last_checked = datetime.utcnow()
             source.last_success = True
             db.commit()
+        elif rss_url:
+            # Persist the auto-discovered source
+            try:
+                new_src = MonitoringSource(
+                    competitor_id=competitor.id,
+                    source_type="rss",
+                    source_url=rss_url,
+                    priority=1,
+                    last_checked=datetime.utcnow(),
+                    last_success=True,
+                )
+                db.add(new_src)
+                db.commit()
+                source = new_src
+            except Exception:
+                db.rollback()
 
         save_monitoring_log(
             db=db,
@@ -968,7 +1039,7 @@ def check_sitemap(
         # 6. LOAD CONTROL
         # =====================================================
 
-        MAX_SITEMAP_URLS_PER_CYCLE = 50
+        MAX_SITEMAP_URLS_PER_CYCLE = 100
 
         article_items = article_items[
             :MAX_SITEMAP_URLS_PER_CYCLE
@@ -1239,10 +1310,30 @@ def is_likely_article_url(url):
         "/stories/",
         "/insights/",
         "/resources/",
+        "/resource/",
+        "/learn/",
+        "/guides/",
+        "/guide/",
+        "/tutorial/",
+        "/tutorials/",
+        "/engineering/",
+        "/tech/",
+        "/updates/",
+        "/press/",
+        "/announcements/",
+        "/announcement/",
+        "/case-study/",
+        "/case-studies/",
+        "/research/",
+        "/whitepaper/",
+        "/changelog/",
+        "/release/",
+        "/releases/",
         "/2026/",
         "/2025/",
         "/2024/",
-        "/2023/"
+        "/2023/",
+        "/2022/",
     ]
 
     for keyword in article_keywords:
