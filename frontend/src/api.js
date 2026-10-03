@@ -1,7 +1,17 @@
 import axios from "axios";
 
+const getBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (!envUrl) return "http://127.0.0.1:8000";
+    if (envUrl.startsWith("http://") || envUrl.startsWith("https://")) {
+        return envUrl.replace(/\/+$/, "");
+    }
+    return `https://${envUrl}`.replace(/\/+$/, "");
+};
+
 const API = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
+    baseURL: getBaseUrl(),
+    timeout: 30000,
 });
 
 export const getDashboardStats = async () => {
