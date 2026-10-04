@@ -635,7 +635,6 @@ function App() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Stripe Engineering Blog"
                     value={newCompetitor.name}
                     onChange={(e) =>
                       setNewCompetitor({ ...newCompetitor, name: e.target.value })
@@ -647,9 +646,8 @@ function App() {
                 <label>
                   Website URL
                   <input
-                    type="url"
+                    type="text"
                     required
-                    placeholder="https://stripe.com"
                     value={newCompetitor.website_url}
                     onChange={(e) =>
                       setNewCompetitor({
@@ -664,8 +662,7 @@ function App() {
                 <label>
                   Blog / News URL (Optional)
                   <input
-                    type="url"
-                    placeholder="https://stripe.com/blog"
+                    type="text"
                     value={newCompetitor.blog_url}
                     onChange={(e) =>
                       setNewCompetitor({
