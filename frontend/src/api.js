@@ -1,17 +1,28 @@
 import axios from "axios";
 
 const getBaseUrl = () => {
+    // 1. Explicit environment variable (from Vite build or .env)
     const envUrl = import.meta.env.VITE_API_URL;
-    if (!envUrl) return "http://127.0.0.1:8000";
-    if (envUrl.startsWith("http://") || envUrl.startsWith("https://")) {
-        return envUrl.replace(/\/+$/, "");
+    if (envUrl && envUrl.trim() !== "") {
+        if (envUrl.startsWith("http://") || envUrl.startsWith("https://")) {
+            return envUrl.replace(/\/+$/, "");
+        }
+        return `https://${envUrl}`.replace(/\/+$/, "");
     }
-    return `https://${envUrl}`.replace(/\/+$/, "");
+
+    // 2. Automatic cloud host resolution (e.g. Render deployments)
+    if (typeof window !== "undefined" && window.location.hostname.includes("onrender.com")) {
+        const backendHost = window.location.hostname.replace("-frontend", "-backend");
+        return `https://${backendHost}`;
+    }
+
+    // 3. Localhost fallback
+    return "http://127.0.0.1:8000";
 };
 
 const API = axios.create({
     baseURL: getBaseUrl(),
-    timeout: 30000,
+    timeout: 60000,
 });
 
 export const getDashboardStats = async () => {

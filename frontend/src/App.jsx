@@ -115,7 +115,7 @@ function App() {
   // ==========================================================
   // DATA LOADER
   // ==========================================================
-  const loadDashboard = async () => {
+  const loadDashboard = async (retryCount = 0) => {
     try {
       setError(null);
       const [statsData, competitorsData, articlesData, logsData] =
@@ -130,8 +130,14 @@ function App() {
       setCompetitors(competitorsData);
       setArticles(articlesData);
       setLogs(logsData);
+      setError(null);
     } catch (err) {
       console.error(err);
+      if (retryCount < 2) {
+        // Auto-retry after 3s to gracefully handle Render spin-ups/cold starts
+        setTimeout(() => loadDashboard(retryCount + 1), 3000);
+        return;
+      }
       setError("Unable to connect to the ContentPulse backend API.");
     } finally {
       setLoading(false);
