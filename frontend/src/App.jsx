@@ -418,6 +418,11 @@ function App() {
   if (loading) {
     return (
       <div className="loading-screen">
+        <img
+          src="/logo-icon.png"
+          alt="ContentPulse"
+          className="loading-brand-logo"
+        />
         <div className="loading-spinner"></div>
         <p>Initializing ContentPulse Monitoring Platform...</p>
       </div>
@@ -427,10 +432,15 @@ function App() {
   if (error && !stats) {
     return (
       <div className="error-screen">
-        <AlertCircle size={48} />
+        <img
+          src="/logo-icon.png"
+          alt="ContentPulse"
+          style={{ width: "56px", height: "56px", marginBottom: "16px", objectFit: "contain" }}
+        />
+        <AlertCircle size={36} color="#ef4444" />
         <h2>Backend Connection Failed</h2>
         <p>{error}</p>
-        <button className="primary-button" onClick={loadDashboard}>
+        <button className="primary-button" onClick={() => loadDashboard()}>
           <RefreshCw size={16} /> Retry Connection
         </button>
       </div>
@@ -444,9 +454,11 @@ function App() {
       ====================================================== */}
       <aside className="sidebar">
         <div className="logo-section">
-          <div className="logo-icon">
-            <Activity size={22} color="white" />
-          </div>
+          <img
+            src="/logo-icon.png"
+            alt="ContentPulse Logo"
+            className="brand-logo-img"
+          />
           <div>
             <h1>ContentPulse</h1>
             <span>Competitor Intelligence</span>
