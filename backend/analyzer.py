@@ -234,20 +234,12 @@ def analyze_website(website_url):
     # --------------------------------------------------
     html = fetch_page(website_url)
 
-    if not html:
-        return {
-            "success": False,
-            "website_url": website_url,
-            "rss_url": None,
-            "sitemap_url": None,
-            "blog_url": None,
-            "available_methods": [],
-        }
-
     # --------------------------------------------------
-    # 2. Discover RSS / Atom  (HTML tag first, then probe)
+    # 2. Discover RSS / Atom (HTML tag first, then probe)
     # --------------------------------------------------
-    rss_url = find_feed_in_html(html, website_url)
+    rss_url = None
+    if html:
+        rss_url = find_feed_in_html(html, website_url)
     if not rss_url:
         rss_url = probe_common_feed_paths(website_url)
 
@@ -259,7 +251,11 @@ def analyze_website(website_url):
     # --------------------------------------------------
     # 4. Discover Blog / News page
     # --------------------------------------------------
-    blog_url = find_blog_page(html, website_url)
+    blog_url = None
+    if html:
+        blog_url = find_blog_page(html, website_url)
+    elif rss_url or sitemap_url:
+        blog_url = website_url
 
     # --------------------------------------------------
     # 5. Build strategy list
@@ -272,10 +268,11 @@ def analyze_website(website_url):
     if blog_url:
         methods.append("direct_page")
 
+    has_any_source = bool(rss_url or sitemap_url or blog_url)
     print(f"Analysis complete: RSS={rss_url}, Sitemap={sitemap_url}, Blog={blog_url}")
 
     return {
-        "success": True,
+        "success": has_any_source,
         "website_url": website_url,
         "rss_url": rss_url,
         "sitemap_url": sitemap_url,

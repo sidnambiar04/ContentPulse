@@ -1647,18 +1647,31 @@ def check_competitor(
         + uuid.uuid4().hex[:6].upper()
     )
 
-    print(f"Monitoring Check: {check_id}")
+    print(f"Monitoring Check: {check_id} for {competitor.name}")
+
+    # Dynamic Auto-Discovery if competitor has no sources configured
+    if not competitor.rss_url and not competitor.sitemap_url and not competitor.blog_url:
+        try:
+            from analyzer import analyze_website
+            print(f"No sources configured for {competitor.name}. Auto-discovering on {competitor.website_url}...")
+            analysis = analyze_website(competitor.website_url)
+            if analysis.get("rss_url") or analysis.get("sitemap_url") or analysis.get("blog_url"):
+                competitor.rss_url = analysis.get("rss_url")
+                competitor.sitemap_url = analysis.get("sitemap_url")
+                competitor.blog_url = analysis.get("blog_url")
+                competitor.status = "online"
+                db.commit()
+                print(f"Auto-discovered sources for {competitor.name}: RSS={competitor.rss_url}, Sitemap={competitor.sitemap_url}")
+        except Exception as e:
+            print(f"Auto-discovery failed for {competitor.name}: {e}")
 
     total_new_articles = 0
-
     results = {}
 
     # =====================================================
-    # RSS
+    # RSS (runs if configured, or tries auto-discovery)
     # =====================================================
-
-    if competitor.rss_url:
-
+    if competitor.rss_url or not (competitor.sitemap_url or competitor.blog_url):
         rss_result = check_rss(
             competitor,
             db,
