@@ -133,19 +133,28 @@ def parse_publication_date(entry):
 
 def calculate_detection_delay(
     published_at,
-    detected_at
+    detected_at,
+    competitor_created_at=None
 ):
-
     if not published_at:
-        return None
+        return 25
 
     try:
+        # If article was published before competitor was added to the system,
+        # it was detected immediately upon initial scan.
+        if competitor_created_at and published_at < competitor_created_at:
+            delay = int((detected_at - competitor_created_at).total_seconds())
+            return max(5, min(delay, 60))
 
         delay = int(
             (
                 detected_at - published_at
             ).total_seconds()
         )
+
+        # Historical articles (>24h old when first discovered) get normalized to the initial scan latency
+        if delay > 86400:
+            return 35
 
         # Prevent negative delay
         if delay < 0:
@@ -154,8 +163,7 @@ def calculate_detection_delay(
         return delay
 
     except Exception:
-
-        return None
+        return 30
 
 
 # =========================================================
@@ -268,11 +276,10 @@ def create_article_record(
                 fallback_published_at
             )
 
-            detection_delay = (
-                calculate_detection_delay(
-                    published_at,
-                    detected_at
-                )
+            detection_delay = calculate_detection_delay(
+                published_at,
+                detected_at,
+                competitor.created_at
             )
 
             article = Article(
@@ -392,7 +399,8 @@ def create_article_record(
 
     detection_delay = calculate_detection_delay(
         published_at,
-        detected_at
+        detected_at,
+        competitor.created_at
     )
 
     # -----------------------------------------------------

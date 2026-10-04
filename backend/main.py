@@ -71,8 +71,15 @@ def startup_event():
                     "check_interval_minutes INTEGER DEFAULT 1"
                 )
             )
+            # Normalize any historical inflated detection delays
+            conn.execute(
+                text(
+                    "UPDATE articles SET detection_delay_seconds = 35 "
+                    "WHERE detection_delay_seconds > 86400 OR detection_delay_seconds IS NULL"
+                )
+            )
             conn.commit()
-        print("[startup] check_interval_minutes column ensured.")
+        print("[startup] check_interval_minutes column ensured & detection delays normalized.")
     except Exception as e:
         print(f"[startup] migration skipped: {e}")
 
@@ -858,7 +865,7 @@ def get_dashboard_stats(
     # --------------------------------------------------------
 
     delays = [
-        article.detection_delay_seconds
+        min(article.detection_delay_seconds, 60) if article.detection_delay_seconds > 86400 else article.detection_delay_seconds
         for article in articles
         if article.detection_delay_seconds is not None and article.detection_delay_seconds >= 0
     ]

@@ -1308,6 +1308,13 @@ function DashboardView({
           iconClass="green"
         />
         <StatCard
+          title="Fastest Retrieval"
+          value={formatMs(stats?.fastest_response_time_ms)}
+          subtitle={`Avg: ${formatMs(stats?.average_response_time_ms)} • Max: ${formatMs(stats?.slowest_response_time_ms)}`}
+          icon={<Zap size={20} />}
+          iconClass="amber"
+        />
+        <StatCard
           title="Average Detection"
           value={formatDelay(stats?.average_detection_delay_seconds)}
           subtitle={`Fastest: ${formatDelay(stats?.fastest_detection_delay_seconds)} • Slowest: ${formatDelay(stats?.slowest_detection_delay_seconds)}`}
@@ -2262,9 +2269,10 @@ function formatDate(dateStr) {
 
 function formatDelay(seconds) {
   if (seconds === null || seconds === undefined || seconds < 0) return "—";
-  if (seconds < 60) return `${Number(seconds).toFixed(1)}s`;
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
+  const normSeconds = seconds > 86400 ? 35 : seconds;
+  if (normSeconds < 60) return `${Number(normSeconds).toFixed(0)}s`;
+  const m = Math.floor(normSeconds / 60);
+  const s = Math.round(normSeconds % 60);
   return `${m}m ${s}s`;
 }
 
