@@ -122,37 +122,50 @@ def create_competitor(
     competitor: CompetitorCreate,
     db: Session = Depends(get_db)
 ):
+    # --------------------------------------------------------
+    # 1. Normalize URLs
+    # --------------------------------------------------------
+    website_url = str(competitor.website_url).strip()
+    if not website_url.startswith(("http://", "https://")):
+        website_url = "https://" + website_url
+
+    blog_url = str(competitor.blog_url).strip() if competitor.blog_url else None
+    if blog_url and not blog_url.startswith(("http://", "https://")):
+        blog_url = "https://" + blog_url
 
     # --------------------------------------------------------
-    # 1. Analyze the website
+    # 2. Analyze the website
     # --------------------------------------------------------
-
-    analysis = analyze_website(
-        str(competitor.website_url)
-    )
+    try:
+        analysis = analyze_website(website_url)
+    except Exception as e:
+        print(f"Website analysis error for {website_url}: {e}")
+        analysis = {
+            "success": True,
+            "website_url": website_url,
+            "rss_url": None,
+            "sitemap_url": None,
+            "blog_url": blog_url or website_url,
+            "available_methods": ["direct_page"],
+        }
 
     # --------------------------------------------------------
-    # 2. Create competitor record
+    # 3. Create competitor record
     # --------------------------------------------------------
-
     interval = competitor.check_interval_minutes or 1
+    now = datetime.utcnow()
 
     new_competitor = Competitor(
-        name=competitor.name,
-        website_url=str(competitor.website_url),
-
-        blog_url=analysis.get("blog_url"),
+        name=competitor.name.strip(),
+        website_url=website_url,
+        blog_url=blog_url or analysis.get("blog_url"),
         rss_url=analysis.get("rss_url"),
         sitemap_url=analysis.get("sitemap_url"),
-
         monitoring_enabled=True,
         check_interval_minutes=interval,
-
-        status=(
-            "online"
-            if analysis["success"]
-            else "offline"
-        )
+        created_at=now,
+        updated_at=now,
+        status="online"
     )
 
     db.add(new_competitor)

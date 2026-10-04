@@ -5,8 +5,8 @@ from datetime import datetime
 
 class CompetitorCreate(BaseModel):
     name: str
-    website_url: HttpUrl
-    blog_url: Optional[HttpUrl] = None
+    website_url: str
+    blog_url: Optional[str] = None
     check_interval_minutes: Optional[int] = 1
 
 

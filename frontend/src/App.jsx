@@ -186,10 +186,20 @@ function App() {
       setAddingCompetitor(true);
       setError(null);
 
+      let formattedWebsite = newCompetitor.website_url.trim();
+      if (!formattedWebsite.startsWith("http://") && !formattedWebsite.startsWith("https://")) {
+        formattedWebsite = "https://" + formattedWebsite;
+      }
+
+      let formattedBlog = newCompetitor.blog_url.trim() || null;
+      if (formattedBlog && !formattedBlog.startsWith("http://") && !formattedBlog.startsWith("https://")) {
+        formattedBlog = "https://" + formattedBlog;
+      }
+
       await createCompetitor({
         name: newCompetitor.name.trim(),
-        website_url: newCompetitor.website_url.trim(),
-        blog_url: newCompetitor.blog_url.trim() || null,
+        website_url: formattedWebsite,
+        blog_url: formattedBlog,
         check_interval_minutes: Number(newCompetitor.check_interval_minutes) || 1,
       });
 
