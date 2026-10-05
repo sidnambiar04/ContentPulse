@@ -50,7 +50,7 @@ function App() {
   const [articles, setArticles] = useState([]);
   const [logs, setLogs] = useState([]);
 
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState("landing");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -467,6 +467,14 @@ function App() {
 
         <nav className="navigation">
           <div
+            className={`nav-item ${activePage === "landing" ? "active" : ""}`}
+            onClick={() => setActivePage("landing")}
+          >
+            <Zap size={18} />
+            <span>Overview</span>
+          </div>
+
+          <div
             className={`nav-item ${activePage === "dashboard" ? "active" : ""}`}
             onClick={() => setActivePage("dashboard")}
           >
@@ -545,6 +553,10 @@ function App() {
         )}
 
         {/* PAGES */}
+        {activePage === "landing" && (
+          <LandingView onStartTracking={() => setActivePage("dashboard")} />
+        )}
+
         {activePage === "dashboard" && (
           <DashboardView
             stats={stats}
@@ -1255,6 +1267,209 @@ function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// LANDING VIEW
+// ============================================================
+function LandingView({ onStartTracking }) {
+  return (
+    <div className="landing-container">
+      {/* HERO SECTION */}
+      <section className="landing-hero">
+        <div className="landing-hero-content">
+          <div className="landing-badge">
+            <Zap size={14} />
+            <span>REAL-TIME COMPETITOR CONTENT MONITORING</span>
+          </div>
+
+          <h1 className="landing-title">
+            Detect Competitor Articles <br />
+            <span className="landing-title-highlight">In Seconds, Not Hours</span>
+          </h1>
+
+          <p className="landing-subtitle">
+            ContentPulse continuously monitors competitor websites using automated multi-source discovery 
+            (RSS, XML Sitemaps & Direct HTML Scraping) backed by 10 concurrent Python worker threads.
+          </p>
+
+          <div className="landing-cta-group">
+            <button className="cta-button-primary" onClick={onStartTracking}>
+              <span>Let's Track Content</span>
+              <Play size={16} fill="white" />
+            </button>
+            <a href="#features" className="cta-button-secondary">
+              <span>System Features</span>
+              <Info size={16} />
+            </a>
+          </div>
+
+          {/* STATS PREVIEW STRIP */}
+          <div className="landing-stats-grid">
+            <div className="landing-stat-card">
+              <div className="landing-stat-icon">
+                <Clock size={20} />
+              </div>
+              <div>
+                <div className="landing-stat-number">&lt; 20 Sec</div>
+                <div className="landing-stat-label">Live Detection Speed</div>
+              </div>
+            </div>
+
+            <div className="landing-stat-card">
+              <div className="landing-stat-icon">
+                <Layers size={20} />
+              </div>
+              <div>
+                <div className="landing-stat-number">10 Workers</div>
+                <div className="landing-stat-label">ThreadPool Concurrency</div>
+              </div>
+            </div>
+
+            <div className="landing-stat-card">
+              <div className="landing-stat-icon">
+                <Globe size={20} />
+              </div>
+              <div>
+                <div className="landing-stat-number">3 Sources</div>
+                <div className="landing-stat-label">Auto RSS, Sitemap, HTML</div>
+              </div>
+            </div>
+
+            <div className="landing-stat-card">
+              <div className="landing-stat-icon">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <div className="landing-stat-number">100% Isolated</div>
+                <div className="landing-stat-label">15s Request Timeouts</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CORE FEATURES SECTION */}
+      <section id="features" style={{ scrollMarginTop: "40px" }}>
+        <div className="landing-section-header">
+          <span className="landing-section-tag">Powerful Engine</span>
+          <h2 className="landing-section-title">Everything You Need For Competitor Intelligence</h2>
+          <p className="landing-section-desc">
+            Built to capture every publish event seamlessly with automated discovery, resilience safeguards, and full content extraction.
+          </p>
+        </div>
+
+        <div className="landing-features-grid">
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon">
+              <Search size={24} />
+            </div>
+            <h3>Multi-Source Auto Discovery</h3>
+            <p>
+              Simply submit a competitor's domain. ContentPulse automatically scans HTML RSS links, parses robots.txt sitemap directives, probes common endpoints, and locates blog index pages.
+            </p>
+            <div className="landing-feature-tags">
+              <span className="landing-tag">RSS & Atom</span>
+              <span className="landing-tag">XML Sitemaps</span>
+              <span className="landing-tag">HTML Scraping</span>
+            </div>
+          </div>
+
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon">
+              <Server size={24} />
+            </div>
+            <h3>Resilient Monitoring Engine</h3>
+            <p>
+              High-concurrency background engine powered by APScheduler and ThreadPoolExecutor. Features exponential backoff retries (1s, 2s, 4s) for network transient errors.
+            </p>
+            <div className="landing-feature-tags">
+              <span className="landing-tag">10 Concurrent Threads</span>
+              <span className="landing-tag">Exponential Backoff</span>
+              <span className="landing-tag">15s Timeouts</span>
+            </div>
+          </div>
+
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon">
+              <FileText size={24} />
+            </div>
+            <h3>Deep Article Extraction</h3>
+            <p>
+              Extracts full body markdown content, author information, published timestamps, JSON-LD metadata, featured OpenGraph images, and outbound relevant links.
+            </p>
+            <div className="landing-feature-tags">
+              <span className="landing-tag">Full Readability Body</span>
+              <span className="landing-tag">Link Graph</span>
+              <span className="landing-tag">URL Deduplication</span>
+            </div>
+          </div>
+
+          <div className="landing-feature-card">
+            <div className="landing-feature-icon">
+              <Activity size={24} />
+            </div>
+            <h3>Intelligence Dashboard & Logs</h3>
+            <p>
+              Real-time KPI metric tracking, interactive detection delay distribution rankings, searchable article feeds, and diagnostic system monitoring logs.
+            </p>
+            <div className="landing-feature-tags">
+              <span className="landing-tag">Live Metrics</span>
+              <span className="landing-tag">Delay Distribution</span>
+              <span className="landing-tag">Observability Logs</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section>
+        <div className="landing-section-header">
+          <span className="landing-section-tag">Workflow</span>
+          <h2 className="landing-section-title">How ContentPulse Works</h2>
+          <p className="landing-section-desc">From domain input to real-time intelligence in 4 simple steps.</p>
+        </div>
+
+        <div className="landing-steps-grid">
+          <div className="landing-step-card">
+            <div className="landing-step-number">1</div>
+            <h4>Add Competitor URL</h4>
+            <p>Provide the main domain of any competitor blog or publication site.</p>
+          </div>
+
+          <div className="landing-step-card">
+            <div className="landing-step-number">2</div>
+            <h4>Automatic Probe</h4>
+            <p>Site analyzer probes RSS, Sitemap, and blog routes instantly.</p>
+          </div>
+
+          <div className="landing-step-card">
+            <div className="landing-step-number">3</div>
+            <h4>Background Worker Scan</h4>
+            <p>Concurrent threads check configured sources every 1–10 minutes.</p>
+          </div>
+
+          <div className="landing-step-card">
+            <div className="landing-step-number">4</div>
+            <h4>Instant Article Feed</h4>
+            <p>Newly detected posts show in your feed with full extracted content.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* BOTTOM CTA BANNER */}
+      <section className="landing-bottom-banner">
+        <div className="landing-bottom-text">
+          <h3>Ready to track competitor content in real-time?</h3>
+          <p>Gain instant insights on new articles, press releases, and blogs.</p>
+        </div>
+        <button className="cta-button-primary" onClick={onStartTracking}>
+          <span>Let's Track Content</span>
+          <Zap size={18} fill="white" />
+        </button>
+      </section>
     </div>
   );
 }
