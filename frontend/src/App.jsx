@@ -269,21 +269,23 @@ function App() {
     try {
       setCheckingCompetitorId(competitorId);
       setError(null);
-      const res = await checkCompetitorNow(competitorId);
-      const newArticles = res.new_articles ?? 0;
+      await checkCompetitorNow(competitorId);
       showToast(
-        `Check complete for ${competitorName || "Competitor"}: ${newArticles} new article(s) found.`,
-        res.success ? "success" : "info"
+        `⚡ Check started for ${competitorName || "Competitor"} — updating live feed…`,
+        "info"
       );
-      await loadDashboard();
+      setTimeout(async () => {
+        await loadDashboard();
+        setCheckingCompetitorId(null);
+        showToast(`Feed updated for ${competitorName || "Competitor"}.`, "success");
+      }, 4000);
     } catch (err) {
       console.error(err);
+      setCheckingCompetitorId(null);
       showToast(
         `Check failed for ${competitorName || "Competitor"}: ${err.message}`,
         "error"
       );
-    } finally {
-      setCheckingCompetitorId(null);
     }
   };
 

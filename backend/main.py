@@ -417,15 +417,23 @@ def check_competitor_endpoint(
             "error": "Competitor not found"
         }
 
-    result = monitor_competitor(
-        competitor,
-        db
+    from scheduler import check_single_competitor
+
+    t = threading.Thread(
+        target=check_single_competitor,
+        args=(competitor_id,),
+        daemon=True
     )
+    t.start()
 
     return {
+        "success": True,
         "competitor": competitor.name,
-        **result
+        "message": f"Scan started for {competitor.name}",
+        "total_new_articles": 0,
+        "new_articles": 0,
     }
+
 
 
 # ============================================================
