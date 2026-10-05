@@ -274,8 +274,19 @@ def get_competitors(
         .all()
     )
 
+    # Latest article detection per competitor
+    latest_detections = dict(
+        db.query(
+            Article.competitor_id,
+            func.max(Article.detected_at)
+        )
+        .group_by(Article.competitor_id)
+        .all()
+    )
+
     result = []
     for c in competitors:
+        last_det = c.last_successful_detection or latest_detections.get(c.id)
         result.append({
             "id": c.id,
             "name": c.name,
@@ -285,8 +296,8 @@ def get_competitors(
             "sitemap_url": c.sitemap_url,
             "monitoring_enabled": c.monitoring_enabled,
             "status": c.status,
-            "last_checked": c.last_checked,
-            "last_successful_detection": c.last_successful_detection,
+            "last_checked": c.last_checked or last_det,
+            "last_successful_detection": last_det,
             "created_at": c.created_at,
             "updated_at": c.updated_at,
             "sources_count": source_counts.get(c.id, 0)

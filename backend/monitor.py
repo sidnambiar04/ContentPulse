@@ -1783,11 +1783,16 @@ def check_competitor(
 
         competitor.status = "online"
 
-        if total_new_articles > 0:
+        latest_art_date = (
+            db.query(Article.detected_at)
+            .filter(Article.competitor_id == competitor.id)
+            .order_by(Article.detected_at.desc())
+            .first()
+        )
 
-            competitor.last_successful_detection = (
-                datetime.utcnow()
-            )
+        competitor.last_successful_detection = (
+            latest_art_date[0] if latest_art_date else datetime.utcnow()
+        )
 
     else:
 
